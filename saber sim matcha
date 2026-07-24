@@ -1,0 +1,293 @@
+loadstring(game:HttpGet("https://scripts.wabisabi.mom/wabi-sabi-ui-lib.lua"))()
+local Library = WabiSabi
+local Workspace = game:GetService("Workspace")
+
+local isLoading = true
+
+local Window = Library:CreateWindow({
+    Title = "Hitbox Expander",
+    SubTitle = "Fire Bosses & Golems",
+    Size = Vector2.new(400, 400),
+    MinSize = Vector2.new(350, 340),
+    Resize = true,
+    TabWidth = 140,
+    Theme = "Vynixu",
+    Translucent = true,
+    AutoStep = true,
+    ConfigName = "HitboxExpander"
+})
+
+local BossesTab = Window:AddTab({ Title = "Bosses" })
+local SettingsTab = Window:AddTab({ Title = "Settings" })
+
+local BOSS_MULT = 15
+local BOSS_INTERVAL = 1.5
+local bossesNeedReset = false
+
+local targets = {
+    boss = { enabled = true },
+    masterFireBoss = { enabled = true },
+    grandmasterFireBoss = { enabled = true },
+    fireGolems = { enabled = true }
+}
+
+local singleBosses = {
+    boss = {
+        parts = {"Gameplay", "Boss", "BossHolder", "Boss"},
+        origSize = nil, origTransp = nil, model = nil
+    },
+    masterFireBoss = {
+        parts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire", "Master Fire Boss"},
+        origSize = nil, origTransp = nil, model = nil
+    },
+    grandmasterFireBoss = {
+        parts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire", "Grandmaster Fire Boss"},
+        origSize = nil, origTransp = nil, model = nil
+    }
+}
+
+local golemZones = {
+    {
+        zoneParts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire"},
+        golemName = "Fire Golem",
+        activeGolems = {}
+    },
+    {
+        zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"},
+        golemName = "Fire Golem",
+        activeGolems = {}
+    }
+}
+
+local function findByParts(parts)
+    local obj = Workspace
+    for _, p in ipairs(parts) do
+        obj = obj:FindFirstChild(p)
+        if not obj then return nil end
+    end
+    return obj
+end
+
+local function isAlive(model)
+    if not model or not model.Parent then return false end
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if hum then return hum.Health > 0 end
+    local hp = model:GetAttribute("Health")
+    return hp ~= nil and hp > 0
+end
+
+local function safeModify(part, newSize, newTransparency)
+    if part and part.Parent then
+        pcall(function()
+            part.Size = newSize
+            part.Transparency = newTransparency
+        end)
+    end
+end
+
+local function expandSingleBoss(bd, multiplier)
+    if bd.model and bd.model.Parent and isAlive(bd.model) then return end
+    if bd.model then
+        local hrp = bd.model:FindFirstChild("HumanoidRootPart")
+        safeModify(hrp, bd.origSize, bd.origTransp)
+        bd.model = nil
+    end
+    local boss = findByParts(bd.parts)
+    if not boss or not boss:IsA("Model") or not isAlive(boss) then return end
+    local hrp = boss:FindFirstChild("HumanoidRootPart")
+    if not hrp or not hrp:IsA("BasePart") then return end
+    bd.origSize = hrp.Size
+    bd.origTransp = hrp.Transparency
+    bd.model = boss
+    safeModify(hrp, bd.origSize * multiplier, 1)
+end
+
+local function expandGolems()
+    if not targets.fireGolems.enabled then
+        for _, zoneData in ipairs(golemZones) do
+            for _, data in pairs(zoneData.activeGolems) do
+                safeModify(data.hrp, data.origSize, data.origTransparency)
+            end
+            zoneData.activeGolems = {}
+        end
+        return
+    end
+
+    for _, zoneData in ipairs(golemZones) do
+        local zone = findByParts(zoneData.zoneParts)
+        if not zone then
+            for _, data in pairs(zoneData.activeGolems) do
+                safeModify(data.hrp, data.origSize, data.origTransparency)
+            end
+            zoneData.activeGolems = {}
+        else
+            local currentGolems = {}
+            for _, child in ipairs(zone:GetChildren()) do
+                if child.Name == zoneData.golemName and child:IsA("Model") and isAlive(child) then
+                    currentGolems[child] = true
+                    if not zoneData.activeGolems[child] then
+                        local hrp = child:FindFirstChild("HumanoidRootPart")
+                        if hrp and hrp:IsA("BasePart") then
+                            local origSize = hrp.Size
+                            local origTransp = hrp.Transparency
+                            safeModify(hrp, origSize * BOSS_MULT, 1)
+                            zoneData.activeGolems[child] = { hrp = hrp, origSize = origSize, origTransparency = origTransp }
+                        end
+                    end
+                end
+            end
+
+            local toRemove = {}
+            for model, data in pairs(zoneData.activeGolems) do
+                if not currentGolems[model] then
+                    table.insert(toRemove, model)
+                end
+            end
+            for _, model in ipairs(toRemove) do
+                local data = zoneData.activeGolems[model]
+                if data then
+                    safeModify(data.hrp, data.origSize, data.origTransparency)
+                    zoneData.activeGolems[model] = nil
+                end
+            end
+        end
+    end
+end
+
+local function lightResetBossCache()
+    for _, bd in pairs(singleBosses) do
+        bd.model = nil
+    end
+    for _, zoneData in ipairs(golemZones) do
+        zoneData.activeGolems = {}
+    end
+end
+
+local function autoSave()
+    if isLoading then return end
+    pcall(function()
+        Library:SaveConfig("HitboxExpander")
+    end)
+end
+
+BossesTab:AddToggle({
+    Id = "boss_toggle",
+    Title = "Boss",
+    Default = true,
+    Callback = function(value)
+        targets.boss.enabled = value
+        autoSave()
+    end
+})
+
+BossesTab:AddToggle({
+    Id = "masterfireboss_toggle",
+    Title = "Master Fire Boss",
+    Default = true,
+    Callback = function(value)
+        targets.masterFireBoss.enabled = value
+        autoSave()
+    end
+})
+
+BossesTab:AddToggle({
+    Id = "grandmasterfireboss_toggle",
+    Title = "Grandmaster Fire Boss",
+    Default = true,
+    Callback = function(value)
+        targets.grandmasterFireBoss.enabled = value
+        autoSave()
+    end
+})
+
+BossesTab:AddToggle({
+    Id = "golems_toggle",
+    Title = "Fire Golems",
+    Default = true,
+    Callback = function(value)
+        targets.fireGolems.enabled = value
+        autoSave()
+    end
+})
+
+BossesTab:AddSlider({
+    Id = "boss_mult",
+    Title = "Multiplier",
+    Min = 1, Max = 50, Default = 15, Rounding = 0,
+    Callback = function(value)
+        BOSS_MULT = value
+        bossesNeedReset = true
+        autoSave()
+    end
+})
+
+BossesTab:AddSlider({
+    Id = "boss_interval",
+    Title = "Interval (sec)",
+    Min = 0.5, Max = 5, Default = 1.5, Rounding = 1,
+    Callback = function(value)
+        BOSS_INTERVAL = value
+        autoSave()
+    end
+})
+
+BossesTab:AddButton({
+    Title = "Force Expand",
+    Callback = function()
+        for key, bd in pairs(singleBosses) do
+            if targets[key].enabled then expandSingleBoss(bd, BOSS_MULT) end
+        end
+        expandGolems()
+        Library:Notify({ Title = "Bosses", Content = "Expanded.", Duration = 2 })
+    end
+})
+
+SettingsTab:AddDropdown({
+    Id = "theme_select",
+    Title = "Theme",
+    Options = Library.Themes,
+    Default = "Vynixu",
+    MaxItems = 8,
+    Callback = function(name)
+        Library:SetTheme(name)
+        autoSave()
+    end
+})
+
+SettingsTab:AddToggle({
+    Id = "translucency",
+    Title = "Translucency",
+    Default = true,
+    Callback = function(value)
+        Library:SetTranslucent(value)
+        autoSave()
+    end
+})
+
+Library:LoadConfig("HitboxExpander")
+isLoading = false
+
+task.spawn(function()
+    while true do
+        if bossesNeedReset then
+            lightResetBossCache()
+            bossesNeedReset = false
+        end
+
+        for key, bd in pairs(singleBosses) do
+            if targets[key].enabled then
+                expandSingleBoss(bd, BOSS_MULT)
+            else
+                if bd.model then
+                    local hrp = bd.model:FindFirstChild("HumanoidRootPart")
+                    safeModify(hrp, bd.origSize, bd.origTransp)
+                    bd.model = nil
+                end
+            end
+        end
+        expandGolems()
+        task.wait(BOSS_INTERVAL)
+    end
+end)
+
+Library:Notify({ Title = "Hitbox Expander", Content = "Loaded.", Duration = 4 })
