@@ -1,14 +1,16 @@
 loadstring(game:HttpGet("https://scripts.wabisabi.mom/wabi-sabi-ui-lib.lua"))()
 local Library = WabiSabi
 local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UIAction = ReplicatedStorage.Events.UIAction
 
 local isLoading = true
 
 local Window = Library:CreateWindow({
     Title = "Hitbox Expander",
-    SubTitle = "Fire Bosses & Golems",
-    Size = Vector2.new(400, 400),
-    MinSize = Vector2.new(350, 340),
+    SubTitle = "Fire Bosses & Golems + Auto + Dungeon",
+    Size = Vector2.new(400, 580),
+    MinSize = Vector2.new(350, 480),
     Resize = true,
     TabWidth = 140,
     Theme = "Vynixu",
@@ -18,8 +20,11 @@ local Window = Library:CreateWindow({
 })
 
 local BossesTab = Window:AddTab({ Title = "Bosses" })
+local AutoTab = Window:AddTab({ Title = "Auto" })
+local DungeonTab = Window:AddTab({ Title = "Dungeon" })
 local SettingsTab = Window:AddTab({ Title = "Settings" })
 
+-- ========================= BOSS SETTINGS =========================
 local BOSS_MULT = 15
 local BOSS_INTERVAL = 1.5
 local bossesNeedReset = false
@@ -59,6 +64,24 @@ local golemZones = {
     }
 }
 
+-- ========================= AUTO SETTINGS =========================
+local autoSellEnabled = false
+local sellInterval = 0.2
+
+local autoBuyMerchantEnabled = false
+local merchantCheckInterval = 30
+local merchantName = "TravelingMerchant"
+
+-- ========================= DUNGEON SETTINGS =========================
+local dungeonDifficulty = 3   -- 1 = Easy, 2 = Medium, 3 = Hard, 4 = Impossible
+local difficultyMap = {
+    ["Easy"] = 1,
+    ["Medium"] = 2,
+    ["Hard"] = 3,
+    ["Impossible"] = 4
+}
+
+-- ========================= UTILITIES =========================
 local function findByParts(parts)
     local obj = Workspace
     for _, p in ipairs(parts) do
@@ -85,6 +108,7 @@ local function safeModify(part, newSize, newTransparency)
     end
 end
 
+-- ========================= BOSS LOGIC =========================
 local function expandSingleBoss(bd, multiplier)
     if bd.model and bd.model.Parent and isAlive(bd.model) then return end
     if bd.model then
@@ -163,6 +187,71 @@ local function lightResetBossCache()
     end
 end
 
+-- ========================= AUTO SELL DNA =========================
+local function startAutoSell()
+    task.spawn(function()
+        while autoSellEnabled do
+            pcall(function()
+                ReplicatedStorage.Events.SellStrength:FireServer()
+            end)
+            task.wait(sellInterval)
+        end
+    end)
+end
+
+-- ========================= AUTO BUY MERCHANT BOOSTS =========================
+local function startAutoBuyMerchant()
+    task.spawn(function()
+        while autoBuyMerchantEnabled do
+            local bought = false
+            for _, obj in ipairs(Workspace:GetDescendants()) do
+                if obj:IsA("Model") and obj.Name == merchantName then
+                    local id = obj:GetAttribute("ID")
+                    if id then
+                        for slot = 1, 5 do
+                            pcall(function()
+                                UIAction:FireServer("TravelingMerchantBuyItem", slot, id)
+                            end)
+                            task.wait(0.3)
+                        end
+                        bought = true
+                        break
+                    end
+                end
+            end
+            if bought then
+                local waited = 0
+                while autoBuyMerchantEnabled and waited < 180 do
+                    task.wait(1)
+                    waited = waited + 1
+                end
+            else
+                local waited = 0
+                while autoBuyMerchantEnabled and waited < merchantCheckInterval do
+                    task.wait(1)
+                    waited = waited + 1
+                end
+            end
+        end
+    end)
+end
+
+-- ========================= DUNGEON START =========================
+local function startDungeon()
+    pcall(function()
+        UIAction:FireServer("SetRegionLoaded", "Dungeon Lobby")
+    end)
+    task.wait(1)
+    pcall(function()
+        UIAction:FireServer("DungeonGroupAction", "Create", "Public", "Space", dungeonDifficulty)
+    end)
+    task.wait(0.5)
+    pcall(function()
+        UIAction:FireServer("DungeonGroupAction", "Start")
+    end)
+end
+
+-- ========================= AUTO SAVE =========================
 local function autoSave()
     if isLoading then return end
     pcall(function()
@@ -170,6 +259,7 @@ local function autoSave()
     end)
 end
 
+-- ========================= GUI: BOSSES =========================
 BossesTab:AddToggle({
     Id = "boss_toggle",
     Title = "Boss",
@@ -242,6 +332,83 @@ BossesTab:AddButton({
     end
 })
 
+-- ========================= GUI: AUTO =========================
+AutoTab:AddToggle({
+    Id = "auto_sell",
+    Title = "Auto Sell DNA",
+    Default = false,
+    Callback = function(value)
+        autoSellEnabled = value
+        if value then startAutoSell() end
+        autoSave()
+    end
+})
+
+AutoTab:AddSlider({
+    Id = "sell_interval",
+    Title = "Sell Interval (sec)",
+    Min = 0.1, Max = 2, Default = 0.2, Rounding = 1,
+    Callback = function(value)
+        sellInterval = value
+        autoSave()
+    end
+})
+
+AutoTab:AddToggle({
+    Id = "auto_buy_merchant",
+    Title = "Auto Buy Merchant",
+    Default = false,
+    Callback = function(value)
+        autoBuyMerchantEnabled = value
+        if value then startAutoBuyMerchant() end
+        autoSave()
+    end
+})
+
+AutoTab:AddButton({
+    Title = "Buy Merchant Now",
+    Callback = function()
+        for _, obj in ipairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and obj.Name == merchantName then
+                local id = obj:GetAttribute("ID")
+                if id then
+                    for slot = 1, 5 do
+                        pcall(function()
+                            UIAction:FireServer("TravelingMerchantBuyItem", slot, id)
+                        end)
+                        task.wait(0.3)
+                    end
+                    Library:Notify({ Title = "Merchant", Content = "Purchased slots 1-5.", Duration = 2 })
+                    return
+                end
+            end
+        end
+        Library:Notify({ Title = "Merchant", Content = "Not found.", Duration = 2 })
+    end
+})
+
+-- ========================= GUI: DUNGEON =========================
+DungeonTab:AddDropdown({
+    Id = "dungeon_difficulty",
+    Title = "Difficulty",
+    Options = {"Easy", "Medium", "Hard", "Impossible"},
+    Default = "Hard",
+    Callback = function(value)
+        local num = difficultyMap[value]
+        if num then dungeonDifficulty = num end
+        autoSave()
+    end
+})
+
+DungeonTab:AddButton({
+    Title = "Start Dungeon",
+    Callback = function()
+        startDungeon()
+        Library:Notify({ Title = "Dungeon", Content = "Space (diff " .. dungeonDifficulty .. ") started.", Duration = 3 })
+    end
+})
+
+-- ========================= GUI: SETTINGS =========================
 SettingsTab:AddDropdown({
     Id = "theme_select",
     Title = "Theme",
@@ -264,9 +431,12 @@ SettingsTab:AddToggle({
     end
 })
 
+-- ========================= CONFIG LOAD =========================
 Library:LoadConfig("HitboxExpander")
 isLoading = false
 
+-- ========================= BACKGROUND LOOPS =========================
+-- Boss hitbox expansion
 task.spawn(function()
     while true do
         if bossesNeedReset then
@@ -290,4 +460,10 @@ task.spawn(function()
     end
 end)
 
-Library:Notify({ Title = "Hitbox Expander", Content = "Loaded.", Duration = 4 })
+-- Start auto-sell if enabled at boot (state restored from config)
+if autoSellEnabled then startAutoSell() end
+
+-- Start auto-buy merchant if enabled at boot
+if autoBuyMerchantEnabled then startAutoBuyMerchant() end
+
+Library:Notify({ Title = "Hitbox Expander", Content = "All modules loaded.", Duration = 4 })
