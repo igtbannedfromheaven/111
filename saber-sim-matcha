@@ -1,30 +1,18 @@
-loadstring(game:HttpGet("https://scripts.wabisabi.mom/wabi-sabi-ui-lib.lua"))()
-local Library = WabiSabi
+local success, Lib = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/neaxusxgod-png/INS-ui/main/uilib.min.lua"))() or INSui
+end)
+
+if not success or not Lib then
+    warn("Failed to load INS-ui library")
+    return
+end
+
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UIAction = ReplicatedStorage.Events.UIAction
+local Players = game:GetService("Players")
+local UIAction = ReplicatedStorage:WaitForChild("Events", 5):WaitForChild("UIAction", 5)
 
 local isLoading = true
-
-local Window = Library:CreateWindow({
-    Title = "Hitbox Expander",
-    SubTitle = "Fire Bosses & Golems + Auto + Dungeon",
-    Size = Vector2.new(400, 580),
-    MinSize = Vector2.new(350, 480),
-    Resize = true,
-    TabWidth = 140,
-    Theme = "Vynixu",
-    Translucent = true,
-    AutoStep = true,
-    ConfigName = "HitboxExpander"
-})
-
-local BossesTab = Window:AddTab({ Title = "Bosses" })
-local AutoTab = Window:AddTab({ Title = "Auto" })
-local DungeonTab = Window:AddTab({ Title = "Dungeon" })
-local SettingsTab = Window:AddTab({ Title = "Settings" })
-
--- ========================= BOSS SETTINGS =========================
 local BOSS_MULT = 15
 local BOSS_INTERVAL = 1.5
 local bossesNeedReset = false
@@ -33,55 +21,63 @@ local targets = {
     boss = { enabled = true },
     masterFireBoss = { enabled = true },
     grandmasterFireBoss = { enabled = true },
-    fireGolems = { enabled = true }
+    fireGolems = { enabled = true },
+    waterBoss = { enabled = true },
+    waterBossMaster = { enabled = true },
+    waterBossGrandmaster = { enabled = true },
+    waterGolems = { enabled = true },
+    earthBoss = { enabled = true },
+    earthBossMaster = { enabled = true },
+    earthBossGrandmaster = { enabled = true },
+    earthGolems = { enabled = true },
+    plasmaBossAdvanced = { enabled = true },
+    plasmaBossMaster = { enabled = true },
+    plasmaBossGrandmaster = { enabled = true },
+    plasmaGolems = { enabled = true }
 }
 
 local singleBosses = {
-    boss = {
-        parts = {"Gameplay", "Boss", "BossHolder", "Boss"},
-        origSize = nil, origTransp = nil, model = nil
-    },
-    masterFireBoss = {
-        parts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire", "Master Fire Boss"},
-        origSize = nil, origTransp = nil, model = nil
-    },
-    grandmasterFireBoss = {
-        parts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire", "Grandmaster Fire Boss"},
-        origSize = nil, origTransp = nil, model = nil
-    }
+    boss = { parts = {"Gameplay", "Boss", "BossHolder", "Boss"}, origSize = nil, origTransp = nil, model = nil },
+    masterFireBoss = { parts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire", "Master Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
+    grandmasterFireBoss = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire", "Grandmaster Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
+    waterBoss = { parts = {"Gameplay", "Map", "ElementZones", "Water", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
+    waterBossMaster = { parts = {"Gameplay", "RegionsLoaded", "MasterWaterArea", "Important", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
+    waterBossGrandmaster = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
+    earthBoss = { parts = {"Gameplay", "Map", "ElementZones", "Earth", "Model", "Earth", "Earth Boss"}, origSize = nil, origTransp = nil, model = nil },
+    earthBossMaster = { parts = {"Gameplay", "RegionsLoaded", "MasterEarthArea", "Important", "Earth", "Earth Boss"}, origSize = nil, origTransp = nil, model = nil },
+    earthBossGrandmaster = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterEarthArea", "Important", "Earth", "Earth Boss"}, origSize = nil, origTransp = nil, model = nil },
+    plasmaBossAdvanced = { parts = {"Gameplay", "RegionsLoaded", "AdvancedPlasmaArea", "Important", "Plasma", "Plasma Boss"}, origSize = nil, origTransp = nil, model = nil },
+    plasmaBossMaster = { parts = {"Gameplay", "RegionsLoaded", "MasterPlasmaArea", "Important", "Plasma", "Plasma Boss"}, origSize = nil, origTransp = nil, model = nil },
+    plasmaBossGrandmaster = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterPlasmaArea", "Important", "Plasma", "Plasma Boss"}, origSize = nil, origTransp = nil, model = nil },
 }
 
 local golemZones = {
-    {
-        zoneParts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire"},
-        golemName = "Fire Golem",
-        activeGolems = {}
-    },
-    {
-        zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"},
-        golemName = "Fire Golem",
-        activeGolems = {}
-    }
+    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterWaterArea", "Important", "Water"}, golemName = "Water Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water"}, golemName = "Water Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "Map", "ElementZones", "Water", "Water"}, golemName = "Water Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterEarthArea", "Important", "Earth"}, golemName = "Earth Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterEarthArea", "Important", "Earth"}, golemName = "Earth Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "Map", "ElementZones", "Earth", "Model", "Earth"}, golemName = "Earth Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "AdvancedPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {} },
 }
 
--- ========================= AUTO SETTINGS =========================
 local autoSellEnabled = false
-local sellInterval = 0.2
+local sellInterval = 0.5
+local autoSellThread = nil
 
-local autoBuyMerchantEnabled = false
-local merchantCheckInterval = 30
-local merchantName = "TravelingMerchant"
+local autoBuySwordsEnabled = false
+local buySwordsInterval = 1.5
+local autoBuySwordsThread = nil
 
--- ========================= DUNGEON SETTINGS =========================
-local dungeonDifficulty = 3   -- 1 = Easy, 2 = Medium, 3 = Hard, 4 = Impossible
-local difficultyMap = {
-    ["Easy"] = 1,
-    ["Medium"] = 2,
-    ["Hard"] = 3,
-    ["Impossible"] = 4
-}
+local dungeonDifficulty = 3
+local difficultyMap = { ["Easy"] = 1, ["Medium"] = 2, ["Hard"] = 3, ["Impossible"] = 4 }
+local dungeonCooldown = 900
+local lastDungeonTime = 0
 
--- ========================= UTILITIES =========================
 local function findByParts(parts)
     local obj = Workspace
     for _, p in ipairs(parts) do
@@ -108,7 +104,32 @@ local function safeModify(part, newSize, newTransparency)
     end
 end
 
--- ========================= BOSS LOGIC =========================
+local function autoSave()
+    if isLoading then return end
+    pcall(function() Lib:SaveConfig("HitboxExpander") end)
+end
+
+local function getPlayerHRP()
+    local player = Players.LocalPlayer
+    if not player then return nil end
+    local char = player.Character
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart")
+end
+
+local function formatTime(seconds)
+    if seconds <= 0 then return "Ready" end
+    local mins = math.floor(seconds / 60)
+    local secs = math.floor(seconds % 60)
+    return string.format("%d:%02d", mins, secs)
+end
+
+local function getDungeonCooldownRemaining()
+    local elapsed = os.time() - lastDungeonTime
+    local remaining = dungeonCooldown - elapsed
+    return remaining > 0 and remaining or 0
+end
+
 local function expandSingleBoss(bd, multiplier)
     if bd.model and bd.model.Parent and isAlive(bd.model) then return end
     if bd.model then
@@ -126,344 +147,301 @@ local function expandSingleBoss(bd, multiplier)
     safeModify(hrp, bd.origSize * multiplier, 1)
 end
 
-local function expandGolems()
-    if not targets.fireGolems.enabled then
-        for _, zoneData in ipairs(golemZones) do
-            for _, data in pairs(zoneData.activeGolems) do
-                safeModify(data.hrp, data.origSize, data.origTransparency)
-            end
-            zoneData.activeGolems = {}
+local function expandGolems(zoneData)
+    local zone = findByParts(zoneData.zoneParts)
+    if not zone then
+        for _, data in pairs(zoneData.activeGolems) do
+            safeModify(data.hrp, data.origSize, data.origTransparency)
         end
+        zoneData.activeGolems = {}
         return
     end
 
-    for _, zoneData in ipairs(golemZones) do
-        local zone = findByParts(zoneData.zoneParts)
-        if not zone then
-            for _, data in pairs(zoneData.activeGolems) do
-                safeModify(data.hrp, data.origSize, data.origTransparency)
-            end
-            zoneData.activeGolems = {}
-        else
-            local currentGolems = {}
-            for _, child in ipairs(zone:GetChildren()) do
-                if child.Name == zoneData.golemName and child:IsA("Model") and isAlive(child) then
-                    currentGolems[child] = true
-                    if not zoneData.activeGolems[child] then
-                        local hrp = child:FindFirstChild("HumanoidRootPart")
-                        if hrp and hrp:IsA("BasePart") then
-                            local origSize = hrp.Size
-                            local origTransp = hrp.Transparency
-                            safeModify(hrp, origSize * BOSS_MULT, 1)
-                            zoneData.activeGolems[child] = { hrp = hrp, origSize = origSize, origTransparency = origTransp }
-                        end
-                    end
+    local currentGolems = {}
+    for _, child in ipairs(zone:GetChildren()) do
+        if child.Name == zoneData.golemName and child:IsA("Model") and isAlive(child) then
+            currentGolems[child] = true
+            if not zoneData.activeGolems[child] then
+                local hrp = child:FindFirstChild("HumanoidRootPart")
+                if hrp and hrp:IsA("BasePart") then
+                    local origSize = hrp.Size
+                    local origTransp = hrp.Transparency
+                    safeModify(hrp, origSize * BOSS_MULT, 1)
+                    zoneData.activeGolems[child] = { hrp = hrp, origSize = origSize, origTransparency = origTransp }
                 end
             end
+        end
+    end
 
-            local toRemove = {}
-            for model, data in pairs(zoneData.activeGolems) do
-                if not currentGolems[model] then
-                    table.insert(toRemove, model)
-                end
+    local toRemove = {}
+    for model, data in pairs(zoneData.activeGolems) do
+        if not currentGolems[model] then table.insert(toRemove, model) end
+    end
+    for _, model in ipairs(toRemove) do
+        local data = zoneData.activeGolems[model]
+        if data then
+            safeModify(data.hrp, data.origSize, data.origTransparency)
+            zoneData.activeGolems[model] = nil
+        end
+    end
+end
+
+local function expandAllGolems()
+    local enabledMap = {
+        fireGolems = {1, 2},
+        waterGolems = {3, 4, 5},
+        earthGolems = {6, 7, 8},
+        plasmaGolems = {9, 10, 11}
+    }
+    for targetName, indices in pairs(enabledMap) do
+        if targets[targetName].enabled then
+            for _, idx in ipairs(indices) do
+                expandGolems(golemZones[idx])
             end
-            for _, model in ipairs(toRemove) do
-                local data = zoneData.activeGolems[model]
-                if data then
+        else
+            for _, idx in ipairs(indices) do
+                for _, data in pairs(golemZones[idx].activeGolems) do
                     safeModify(data.hrp, data.origSize, data.origTransparency)
-                    zoneData.activeGolems[model] = nil
                 end
+                golemZones[idx].activeGolems = {}
             end
         end
     end
 end
 
 local function lightResetBossCache()
-    for _, bd in pairs(singleBosses) do
-        bd.model = nil
-    end
-    for _, zoneData in ipairs(golemZones) do
-        zoneData.activeGolems = {}
-    end
+    for _, bd in pairs(singleBosses) do bd.model = nil end
+    for _, zoneData in ipairs(golemZones) do zoneData.activeGolems = {} end
 end
 
--- ========================= AUTO SELL DNA =========================
 local function startAutoSell()
-    task.spawn(function()
+    if autoSellThread then return end
+    autoSellThread = task.spawn(function()
         while autoSellEnabled do
-            pcall(function()
-                ReplicatedStorage.Events.SellStrength:FireServer()
-            end)
+            pcall(function() ReplicatedStorage.Events.SellStrength:FireServer() end)
             task.wait(sellInterval)
         end
+        autoSellThread = nil
     end)
 end
 
--- ========================= AUTO BUY MERCHANT BOOSTS =========================
-local function startAutoBuyMerchant()
-    task.spawn(function()
-        while autoBuyMerchantEnabled do
-            local bought = false
-            for _, obj in ipairs(Workspace:GetDescendants()) do
-                if obj:IsA("Model") and obj.Name == merchantName then
-                    local id = obj:GetAttribute("ID")
-                    if id then
-                        for slot = 1, 5 do
-                            pcall(function()
-                                UIAction:FireServer("TravelingMerchantBuyItem", slot, id)
-                            end)
-                            task.wait(0.3)
-                        end
-                        bought = true
-                        break
-                    end
-                end
-            end
-            if bought then
-                local waited = 0
-                while autoBuyMerchantEnabled and waited < 180 do
-                    task.wait(1)
-                    waited = waited + 1
-                end
-            else
-                local waited = 0
-                while autoBuyMerchantEnabled and waited < merchantCheckInterval do
-                    task.wait(1)
-                    waited = waited + 1
-                end
-            end
+local function startAutoBuySwords()
+    if autoBuySwordsThread then return end
+    autoBuySwordsThread = task.spawn(function()
+        while autoBuySwordsEnabled do
+            pcall(function() UIAction:FireServer("BuyAllWeapons") end)
+            task.wait(buySwordsInterval)
         end
+        autoBuySwordsThread = nil
     end)
 end
 
--- ========================= DUNGEON START =========================
 local function startDungeon()
-    pcall(function()
-        UIAction:FireServer("SetRegionLoaded", "Dungeon Lobby")
-    end)
+    local remaining = getDungeonCooldownRemaining()
+    if remaining > 0 then return false, "cooldown", remaining end
+    local success = pcall(function() UIAction:FireServer("SetRegionLoaded", "Dungeon Lobby") end)
+    if not success then return false, "error" end
     task.wait(1)
-    pcall(function()
-        UIAction:FireServer("DungeonGroupAction", "Create", "Public", "Space", dungeonDifficulty)
-    end)
+    pcall(function() UIAction:FireServer("DungeonGroupAction", "Create", "Public", "Space", dungeonDifficulty) end)
     task.wait(0.5)
-    pcall(function()
-        UIAction:FireServer("DungeonGroupAction", "Start")
-    end)
+    pcall(function() UIAction:FireServer("DungeonGroupAction", "Start") end)
+    lastDungeonTime = os.time()
+    return true, "ok"
 end
 
--- ========================= AUTO SAVE =========================
-local function autoSave()
-    if isLoading then return end
-    pcall(function()
-        Library:SaveConfig("HitboxExpander")
-    end)
-end
-
--- ========================= GUI: BOSSES =========================
-BossesTab:AddToggle({
-    Id = "boss_toggle",
-    Title = "Boss",
-    Default = true,
-    Callback = function(value)
-        targets.boss.enabled = value
-        autoSave()
-    end
+local win = Lib:CreateWindow({
+    title = "Hitbox Expander",
+    subtitle = "All Elements + Auto + Dungeon",
+    size = Vector2.new(480, 680),
+    menuKey = "RightShift",
+    smartFps = true,
+    checkboxStyle = true,
+    opacity = 98,
 })
 
-BossesTab:AddToggle({
-    Id = "masterfireboss_toggle",
-    Title = "Master Fire Boss",
-    Default = true,
-    Callback = function(value)
-        targets.masterFireBoss.enabled = value
-        autoSave()
-    end
-})
+local hitboxTab = win:Tab("Hitbox", "sword")
+local autoTab = win:Tab("Auto", "zap")
+local dungeonTab = win:Tab("Dungeon", "map")
+local settingsTab = win:Tab("Settings", "settings")
 
-BossesTab:AddToggle({
-    Id = "grandmasterfireboss_toggle",
-    Title = "Grandmaster Fire Boss",
-    Default = true,
-    Callback = function(value)
-        targets.grandmasterFireBoss.enabled = value
-        autoSave()
-    end
-})
+local fireSection = hitboxTab:Section("Fire Element", "Left")
+fireSection:Toggle("Boss", true, function(v) targets.boss.enabled = v; autoSave() end)
+fireSection:Toggle("Master Fire Boss", true, function(v) targets.masterFireBoss.enabled = v; autoSave() end)
+fireSection:Toggle("Grandmaster Fire Boss", true, function(v) targets.grandmasterFireBoss.enabled = v; autoSave() end)
+fireSection:Toggle("Fire Golems", true, function(v) targets.fireGolems.enabled = v; autoSave() end)
 
-BossesTab:AddToggle({
-    Id = "golems_toggle",
-    Title = "Fire Golems",
-    Default = true,
-    Callback = function(value)
-        targets.fireGolems.enabled = value
-        autoSave()
-    end
-})
+local waterSection = hitboxTab:Section("Water Element", "Left")
+waterSection:Toggle("Water Boss", true, function(v) targets.waterBoss.enabled = v; autoSave() end)
+waterSection:Toggle("Master Water Boss", true, function(v) targets.waterBossMaster.enabled = v; autoSave() end)
+waterSection:Toggle("Grandmaster Water Boss", true, function(v) targets.waterBossGrandmaster.enabled = v; autoSave() end)
+waterSection:Toggle("Water Golems", true, function(v) targets.waterGolems.enabled = v; autoSave() end)
 
-BossesTab:AddSlider({
-    Id = "boss_mult",
-    Title = "Multiplier",
-    Min = 1, Max = 50, Default = 15, Rounding = 0,
-    Callback = function(value)
-        BOSS_MULT = value
-        bossesNeedReset = true
-        autoSave()
-    end
-})
+local earthSection = hitboxTab:Section("Earth Element", "Right")
+earthSection:Toggle("Earth Boss", true, function(v) targets.earthBoss.enabled = v; autoSave() end)
+earthSection:Toggle("Master Earth Boss", true, function(v) targets.earthBossMaster.enabled = v; autoSave() end)
+earthSection:Toggle("Grandmaster Earth Boss", true, function(v) targets.earthBossGrandmaster.enabled = v; autoSave() end)
+earthSection:Toggle("Earth Golems", true, function(v) targets.earthGolems.enabled = v; autoSave() end)
 
-BossesTab:AddSlider({
-    Id = "boss_interval",
-    Title = "Interval (sec)",
-    Min = 0.5, Max = 5, Default = 1.5, Rounding = 1,
-    Callback = function(value)
-        BOSS_INTERVAL = value
-        autoSave()
-    end
-})
+local plasmaSection = hitboxTab:Section("Plasma Element", "Right")
+plasmaSection:Toggle("Advanced Plasma Boss", true, function(v) targets.plasmaBossAdvanced.enabled = v; autoSave() end)
+plasmaSection:Toggle("Master Plasma Boss", true, function(v) targets.plasmaBossMaster.enabled = v; autoSave() end)
+plasmaSection:Toggle("Grandmaster Plasma Boss", true, function(v) targets.plasmaBossGrandmaster.enabled = v; autoSave() end)
+plasmaSection:Toggle("Plasma Golems", true, function(v) targets.plasmaGolems.enabled = v; autoSave() end)
 
-BossesTab:AddButton({
-    Title = "Force Expand",
-    Callback = function()
-        for key, bd in pairs(singleBosses) do
-            if targets[key].enabled then expandSingleBoss(bd, BOSS_MULT) end
-        end
-        expandGolems()
-        Library:Notify({ Title = "Bosses", Content = "Expanded.", Duration = 2 })
+local globalSettingsSection = hitboxTab:Section("Global Settings", "Left")
+globalSettingsSection:Slider("Multiplier", 15, 1, 1, 50, "x", function(v) BOSS_MULT = v; bossesNeedReset = true; autoSave() end)
+globalSettingsSection:Slider("Interval (sec)", 1.5, 0.1, 0.5, 5, "s", function(v) BOSS_INTERVAL = v; autoSave() end)
+globalSettingsSection:Button("Force Expand All", function()
+    for key, bd in pairs(singleBosses) do
+        if targets[key] and targets[key].enabled then expandSingleBoss(bd, BOSS_MULT) end
     end
-})
+    expandAllGolems()
+    Lib:Notify("Hitbox", "All enabled hitboxes expanded.", 2, "success")
+end)
 
--- ========================= GUI: AUTO =========================
-AutoTab:AddToggle({
-    Id = "auto_sell",
-    Title = "Auto Sell DNA",
-    Default = false,
-    Callback = function(value)
-        autoSellEnabled = value
-        if value then startAutoSell() end
-        autoSave()
+local autoSellSection = autoTab:Section("Auto Sell", "Left", "Automatically sell DNA")
+autoSellSection:Toggle("Auto Sell DNA", false, function(v)
+    autoSellEnabled = v
+    if v then startAutoSell() end
+    autoSave()
+end)
+autoSellSection:Slider("Sell Interval (sec)", sellInterval, 0.1, 0.1, 2, "s", function(v) sellInterval = v; autoSave() end)
+autoSellSection:Button("Sell DNA Now", function()
+    pcall(function() ReplicatedStorage.Events.SellStrength:FireServer() end)
+    Lib:Notify("Auto Sell", "Sold DNA once.", 1, "success")
+end)
+
+local autoSwordsSection = autoTab:Section("Auto Buy Swords", "Right", "Automatically purchase all swords")
+autoSwordsSection:Toggle("Auto Buy All Swords", false, function(v)
+    autoBuySwordsEnabled = v
+    if v then startAutoBuySwords() end
+    autoSave()
+end)
+autoSwordsSection:Slider("Buy Interval (sec)", buySwordsInterval, 0.5, 0.1, 5, "s", function(v) buySwordsInterval = v; autoSave() end)
+autoSwordsSection:Button("Buy All Swords Now", function()
+    pcall(function() UIAction:FireServer("BuyAllWeapons") end)
+    Lib:Notify("Swords", "BuyAllWeapons fired.", 1, "success")
+end)
+
+local dungeonSection = dungeonTab:Section("Controls", "Left", "Dungeon creation and teleport")
+dungeonSection:Dropdown("Difficulty", "Hard", {"Easy", "Medium", "Hard", "Impossible"}, false, function(v)
+    local num = difficultyMap[v]
+    if num then dungeonDifficulty = num; autoSave() end
+end)
+dungeonSection:Slider("Cooldown (sec)", dungeonCooldown, 10, 30, 1800, "s", function(v) dungeonCooldown = v; autoSave() end)
+
+local cooldownLabel = dungeonSection:Label(function()
+    local remaining = getDungeonCooldownRemaining()
+    if remaining <= 0 then return "Status: Ready (15m)" else return "Cooldown: " .. formatTime(remaining) end
+end)
+
+dungeonSection:Button("Start Dungeon", function()
+    local success, status, extra = startDungeon()
+    if success then
+        Lib:Notify("Dungeon", "Started. Difficulty: " .. dungeonDifficulty, 3, "success")
+    elseif status == "cooldown" then
+        Lib:Notify("Dungeon", "Wait " .. formatTime(extra), 3, "warning")
+    else
+        Lib:Notify("Dungeon", "Failed to start", 2, "error")
     end
-})
+end)
 
-AutoTab:AddSlider({
-    Id = "sell_interval",
-    Title = "Sell Interval (sec)",
-    Min = 0.1, Max = 2, Default = 0.2, Rounding = 1,
-    Callback = function(value)
-        sellInterval = value
-        autoSave()
+dungeonSection:Button("Reset Cooldown", function()
+    lastDungeonTime = 0
+    Lib:Notify("Dungeon", "Cooldown reset.", 2, "success")
+end)
+
+local HOVER_HEIGHT = 8.2
+dungeonSection:Slider("Height above mob", HOVER_HEIGHT, 1, 5, 20, "studs", function(v) HOVER_HEIGHT = v; autoSave() end)
+dungeonSection:Button("Force Refresh (Teleport to Mob)", function()
+    local dungeonStorage = Workspace:FindFirstChild("DungeonStorage")
+    if not dungeonStorage then
+        Lib:Notify("Dungeon", "DungeonStorage not found.", 2, "warning")
+        return
     end
-})
-
-AutoTab:AddToggle({
-    Id = "auto_buy_merchant",
-    Title = "Auto Buy Merchant",
-    Default = false,
-    Callback = function(value)
-        autoBuyMerchantEnabled = value
-        if value then startAutoBuyMerchant() end
-        autoSave()
+    local player = Players.LocalPlayer
+    local char = player and player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then
+        Lib:Notify("Dungeon", "Character not available.", 2, "warning")
+        return
     end
-})
-
-AutoTab:AddButton({
-    Title = "Buy Merchant Now",
-    Callback = function()
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") and obj.Name == merchantName then
-                local id = obj:GetAttribute("ID")
-                if id then
-                    for slot = 1, 5 do
-                        pcall(function()
-                            UIAction:FireServer("TravelingMerchantBuyItem", slot, id)
-                        end)
-                        task.wait(0.3)
-                    end
-                    Library:Notify({ Title = "Merchant", Content = "Purchased slots 1-5.", Duration = 2 })
-                    return
+    local closest = nil
+    local minDist = math.huge
+    local function scan(parent)
+        for _, child in ipairs(parent:GetChildren()) do
+            if child:IsA("Model") then
+                local hrp = child:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    local dist = (root.Position - hrp.Position).Magnitude
+                    if dist < minDist then minDist = dist; closest = hrp end
                 end
             end
+            scan(child)
         end
-        Library:Notify({ Title = "Merchant", Content = "Not found.", Duration = 2 })
     end
-})
-
--- ========================= GUI: DUNGEON =========================
-DungeonTab:AddDropdown({
-    Id = "dungeon_difficulty",
-    Title = "Difficulty",
-    Options = {"Easy", "Medium", "Hard", "Impossible"},
-    Default = "Hard",
-    Callback = function(value)
-        local num = difficultyMap[value]
-        if num then dungeonDifficulty = num end
-        autoSave()
+    pcall(function() scan(dungeonStorage) end)
+    if closest then
+        local pos = closest.Position + Vector3.new(0, HOVER_HEIGHT, 0)
+        pcall(function()
+            root.AssemblyLinearVelocity = Vector3.zero
+            root.CFrame = CFrame.new(pos.X, pos.Y, pos.Z)
+        end)
+        Lib:Notify("Dungeon", "Teleported to mob.", 1, "success")
+    else
+        Lib:Notify("Dungeon", "No mobs found.", 2, "warning")
     end
-})
+end)
 
-DungeonTab:AddButton({
-    Title = "Start Dungeon",
-    Callback = function()
-        startDungeon()
-        Library:Notify({ Title = "Dungeon", Content = "Space (diff " .. dungeonDifficulty .. ") started.", Duration = 3 })
-    end
-})
+local configSection = settingsTab:Section("Configuration", "Left", "Save and load settings")
+configSection:Button("Save Config", function() autoSave(); Lib:Notify("Config", "Saved.", 2, "success") end)
+configSection:Button("Load Config", function()
+    pcall(function() Lib:LoadConfig("HitboxExpander") end)
+    Lib:Notify("Config", "Loaded.", 2, "success"); isLoading = false
+end)
 
--- ========================= GUI: SETTINGS =========================
-SettingsTab:AddDropdown({
-    Id = "theme_select",
-    Title = "Theme",
-    Options = Library.Themes,
-    Default = "Vynixu",
-    MaxItems = 8,
-    Callback = function(name)
-        Library:SetTheme(name)
-        autoSave()
-    end
-})
+local menuSection = settingsTab:Section("Menu", "Right", "Interface options")
+menuSection:Keybind("Menu Toggle Key", "RightShift", function(newKey)
+    Lib:Notify("Menu", "Key changed to: " .. tostring(newKey), 3, "success")
+    autoSave()
+end)
+menuSection:Button("Unload Script", function()
+    Lib:Dialog({
+        title = "Unload?",
+        text = "Remove the menu from the game?",
+        confirm = "Unload",
+        onConfirm = function() Lib:Destroy() end,
+    })
+end):SetRisk()
 
-SettingsTab:AddToggle({
-    Id = "translucency",
-    Title = "Translucency",
-    Default = true,
-    Callback = function(value)
-        Library:SetTranslucent(value)
-        autoSave()
-    end
-})
-
--- ========================= CONFIG LOAD =========================
-Library:LoadConfig("HitboxExpander")
+pcall(function() Lib:LoadConfig("HitboxExpander") end)
 isLoading = false
 
--- ========================= BACKGROUND LOOPS =========================
--- Boss hitbox expansion
+if autoSellEnabled then startAutoSell() end
+if autoBuySwordsEnabled then startAutoBuySwords() end
+
 task.spawn(function()
     while true do
-        if bossesNeedReset then
-            lightResetBossCache()
-            bossesNeedReset = false
-        end
-
-        for key, bd in pairs(singleBosses) do
-            if targets[key].enabled then
-                expandSingleBoss(bd, BOSS_MULT)
-            else
-                if bd.model then
-                    local hrp = bd.model:FindFirstChild("HumanoidRootPart")
-                    safeModify(hrp, bd.origSize, bd.origTransp)
-                    bd.model = nil
+        pcall(function()
+            if bossesNeedReset then
+                lightResetBossCache()
+                bossesNeedReset = false
+            end
+            for key, bd in pairs(singleBosses) do
+                if targets[key] and targets[key].enabled then
+                    expandSingleBoss(bd, BOSS_MULT)
+                else
+                    if bd.model then
+                        local hrp = bd.model:FindFirstChild("HumanoidRootPart")
+                        safeModify(hrp, bd.origSize, bd.origTransp)
+                        bd.model = nil
+                    end
                 end
             end
-        end
-        expandGolems()
+            expandAllGolems()
+        end)
         task.wait(BOSS_INTERVAL)
     end
 end)
 
--- Start auto-sell if enabled at boot (state restored from config)
-if autoSellEnabled then startAutoSell() end
-
--- Start auto-buy merchant if enabled at boot
-if autoBuyMerchantEnabled then startAutoBuyMerchant() end
-
-Library:Notify({ Title = "Hitbox Expander", Content = "All modules loaded.", Duration = 4 })
+Lib:Notify("Hitbox Expander", "All elements supported. Clean and optimized.", 4, "success")
