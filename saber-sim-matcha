@@ -1,9 +1,9 @@
+-- Загрузка библиотеки INS-ui
 local success, Lib = pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/neaxusxgod-png/INS-ui/main/uilib.min.lua"))() or INSui
 end)
 
 if not success or not Lib then
-    warn("Failed to load INS-ui library")
     return
 end
 
@@ -22,6 +22,8 @@ local targets = {
     masterFireBoss = { enabled = true },
     grandmasterFireBoss = { enabled = true },
     fireGolems = { enabled = true },
+    fireGolemBossNormal = { enabled = true },      -- ДОБАВЛЕНО
+    fireGolemBossAdvanced = { enabled = true },    -- ДОБАВЛЕНО
     waterBoss = { enabled = true },
     waterBossMaster = { enabled = true },
     waterBossGrandmaster = { enabled = true },
@@ -40,6 +42,8 @@ local singleBosses = {
     boss = { parts = {"Gameplay", "Boss", "BossHolder", "Boss"}, origSize = nil, origTransp = nil, model = nil },
     masterFireBoss = { parts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire", "Master Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
     grandmasterFireBoss = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire", "Grandmaster Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
+    fireGolemBossNormal = { parts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire", "Fire Golem Boss"}, origSize = nil, origTransp = nil, model = nil }, -- ДОБАВЛЕНО
+    fireGolemBossAdvanced = { parts = {"Gameplay", "RegionsLoaded", "AdvancedFireArea", "Important", "Fire", "Fire Golem Boss"}, origSize = nil, origTransp = nil, model = nil }, -- ДОБАВЛЕНО
     waterBoss = { parts = {"Gameplay", "Map", "ElementZones", "Water", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
     waterBossMaster = { parts = {"Gameplay", "RegionsLoaded", "MasterWaterArea", "Important", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
     waterBossGrandmaster = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
@@ -268,6 +272,8 @@ local fireSection = hitboxTab:Section("Fire Element", "Left")
 fireSection:Toggle("Boss", true, function(v) targets.boss.enabled = v; autoSave() end)
 fireSection:Toggle("Master Fire Boss", true, function(v) targets.masterFireBoss.enabled = v; autoSave() end)
 fireSection:Toggle("Grandmaster Fire Boss", true, function(v) targets.grandmasterFireBoss.enabled = v; autoSave() end)
+fireSection:Toggle("Fire Golem Boss (Normal)", true, function(v) targets.fireGolemBossNormal.enabled = v; autoSave() end) -- ДОБАВЛЕНО
+fireSection:Toggle("Fire Golem Boss (Advanced)", true, function(v) targets.fireGolemBossAdvanced.enabled = v; autoSave() end) -- ДОБАВЛЕНО
 fireSection:Toggle("Fire Golems", true, function(v) targets.fireGolems.enabled = v; autoSave() end)
 
 local waterSection = hitboxTab:Section("Water Element", "Left")
@@ -296,7 +302,6 @@ globalSettingsSection:Button("Force Expand All", function()
         if targets[key] and targets[key].enabled then expandSingleBoss(bd, BOSS_MULT) end
     end
     expandAllGolems()
-    Lib:Notify("Hitbox", "All enabled hitboxes expanded.", 2, "success")
 end)
 
 local autoSellSection = autoTab:Section("Auto Sell", "Left", "Automatically sell DNA")
@@ -308,7 +313,6 @@ end)
 autoSellSection:Slider("Sell Interval (sec)", sellInterval, 0.1, 0.1, 2, "s", function(v) sellInterval = v; autoSave() end)
 autoSellSection:Button("Sell DNA Now", function()
     pcall(function() ReplicatedStorage.Events.SellStrength:FireServer() end)
-    Lib:Notify("Auto Sell", "Sold DNA once.", 1, "success")
 end)
 
 local autoSwordsSection = autoTab:Section("Auto Buy Swords", "Right", "Automatically purchase all swords")
@@ -320,7 +324,6 @@ end)
 autoSwordsSection:Slider("Buy Interval (sec)", buySwordsInterval, 0.5, 0.1, 5, "s", function(v) buySwordsInterval = v; autoSave() end)
 autoSwordsSection:Button("Buy All Swords Now", function()
     pcall(function() UIAction:FireServer("BuyAllWeapons") end)
-    Lib:Notify("Swords", "BuyAllWeapons fired.", 1, "success")
 end)
 
 local dungeonSection = dungeonTab:Section("Controls", "Left", "Dungeon creation and teleport")
@@ -336,36 +339,22 @@ local cooldownLabel = dungeonSection:Label(function()
 end)
 
 dungeonSection:Button("Start Dungeon", function()
-    local success, status, extra = startDungeon()
-    if success then
-        Lib:Notify("Dungeon", "Started. Difficulty: " .. dungeonDifficulty, 3, "success")
-    elseif status == "cooldown" then
-        Lib:Notify("Dungeon", "Wait " .. formatTime(extra), 3, "warning")
-    else
-        Lib:Notify("Dungeon", "Failed to start", 2, "error")
-    end
+    startDungeon()
 end)
 
 dungeonSection:Button("Reset Cooldown", function()
     lastDungeonTime = 0
-    Lib:Notify("Dungeon", "Cooldown reset.", 2, "success")
 end)
 
 local HOVER_HEIGHT = 8.2
 dungeonSection:Slider("Height above mob", HOVER_HEIGHT, 1, 5, 20, "studs", function(v) HOVER_HEIGHT = v; autoSave() end)
 dungeonSection:Button("Force Refresh (Teleport to Mob)", function()
     local dungeonStorage = Workspace:FindFirstChild("DungeonStorage")
-    if not dungeonStorage then
-        Lib:Notify("Dungeon", "DungeonStorage not found.", 2, "warning")
-        return
-    end
+    if not dungeonStorage then return end
     local player = Players.LocalPlayer
     local char = player and player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then
-        Lib:Notify("Dungeon", "Character not available.", 2, "warning")
-        return
-    end
+    if not root then return end
     local closest = nil
     local minDist = math.huge
     local function scan(parent)
@@ -387,22 +376,18 @@ dungeonSection:Button("Force Refresh (Teleport to Mob)", function()
             root.AssemblyLinearVelocity = Vector3.zero
             root.CFrame = CFrame.new(pos.X, pos.Y, pos.Z)
         end)
-        Lib:Notify("Dungeon", "Teleported to mob.", 1, "success")
-    else
-        Lib:Notify("Dungeon", "No mobs found.", 2, "warning")
     end
 end)
 
 local configSection = settingsTab:Section("Configuration", "Left", "Save and load settings")
-configSection:Button("Save Config", function() autoSave(); Lib:Notify("Config", "Saved.", 2, "success") end)
+configSection:Button("Save Config", function() autoSave() end)
 configSection:Button("Load Config", function()
     pcall(function() Lib:LoadConfig("HitboxExpander") end)
-    Lib:Notify("Config", "Loaded.", 2, "success"); isLoading = false
+    isLoading = false
 end)
 
 local menuSection = settingsTab:Section("Menu", "Right", "Interface options")
 menuSection:Keybind("Menu Toggle Key", "RightShift", function(newKey)
-    Lib:Notify("Menu", "Key changed to: " .. tostring(newKey), 3, "success")
     autoSave()
 end)
 menuSection:Button("Unload Script", function()
@@ -444,4 +429,5 @@ task.spawn(function()
     end
 end)
 
-Lib:Notify("Hitbox Expander", "All elements supported. Clean and optimized.", 4, "success")
+-- ЕДИНСТВЕННОЕ УВЕДОМЛЕНИЕ В СКРИПТЕ (при загрузке)
+Lib:Notify("Hitbox Expander", "Success", 4, "success")
