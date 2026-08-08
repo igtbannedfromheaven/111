@@ -18,16 +18,17 @@ local bossesNeedReset = false
 
 local targets = {
     fireBoss = { enabled = true },
-    masterFireBoss = { enabled = true },
-    grandmasterFireBoss = { enabled = true },
-    fireGolemsNormal = { enabled = true },
-    fireGolemsMaster = { enabled = true },
-    fireGolemsGrandmaster = { enabled = true },
+    fireBossAdvanced = { enabled = true },
+    fireBossMaster = { enabled = true },
+    fireBossGrandmaster = { enabled = true },
+    fireGolems = { enabled = true },
     waterBoss = { enabled = true },
+    waterBossAdvanced = { enabled = true },
     waterBossMaster = { enabled = true },
     waterBossGrandmaster = { enabled = true },
     waterGolems = { enabled = true },
     earthBoss = { enabled = true },
+    earthBossAdvanced = { enabled = true },
     earthBossMaster = { enabled = true },
     earthBossGrandmaster = { enabled = true },
     earthGolems = { enabled = true },
@@ -39,12 +40,15 @@ local targets = {
 
 local singleBosses = {
     fireBoss = { parts = {"Gameplay", "Map", "ElementZones", "Fire", "Fire", "Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
-    masterFireBoss = { parts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire", "Master Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
-    grandmasterFireBoss = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire", "Grandmaster Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
+    fireBossAdvanced = { parts = {"Gameplay", "RegionsLoaded", "AdvancedFireArea", "Important", "Fire", "Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
+    fireBossMaster = { parts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire", "Master Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
+    fireBossGrandmaster = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire", "Grandmaster Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
     waterBoss = { parts = {"Gameplay", "Map", "ElementZones", "Water", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
+    waterBossAdvanced = { parts = {"Gameplay", "RegionsLoaded", "AdvancedWaterArea", "Important", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
     waterBossMaster = { parts = {"Gameplay", "RegionsLoaded", "MasterWaterArea", "Important", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
     waterBossGrandmaster = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
     earthBoss = { parts = {"Gameplay", "Map", "ElementZones", "Earth", "Model", "Earth", "Earth Boss"}, origSize = nil, origTransp = nil, model = nil },
+    earthBossAdvanced = { parts = {"Gameplay", "RegionsLoaded", "AdvancedEarthArea", "Important", "Earth", "Earth Boss"}, origSize = nil, origTransp = nil, model = nil },
     earthBossMaster = { parts = {"Gameplay", "RegionsLoaded", "MasterEarthArea", "Important", "Earth", "Earth Boss"}, origSize = nil, origTransp = nil, model = nil },
     earthBossGrandmaster = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterEarthArea", "Important", "Earth", "Earth Boss"}, origSize = nil, origTransp = nil, model = nil },
     plasmaBossAdvanced = { parts = {"Gameplay", "RegionsLoaded", "AdvancedPlasmaArea", "Important", "Plasma", "Plasma Boss"}, origSize = nil, origTransp = nil, model = nil },
@@ -53,15 +57,18 @@ local singleBosses = {
 }
 
 local golemZones = {
-    { zoneParts = {"Gameplay", "Map", "ElementZones", "Fire", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolemsNormal" },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolemsMaster" },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolemsGrandmaster" },
+    { zoneParts = {"Gameplay", "Map", "ElementZones", "Fire", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "AdvancedFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolems" },
+    { zoneParts = {"Gameplay", "Map", "ElementZones", "Water", "Water"}, golemName = "Water Golem", activeGolems = {}, targetKey = "waterGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "AdvancedWaterArea", "Important", "Water"}, golemName = "Water Golem", activeGolems = {}, targetKey = "waterGolems" },
     { zoneParts = {"Gameplay", "RegionsLoaded", "MasterWaterArea", "Important", "Water"}, golemName = "Water Golem", activeGolems = {}, targetKey = "waterGolems" },
     { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water"}, golemName = "Water Golem", activeGolems = {}, targetKey = "waterGolems" },
-    { zoneParts = {"Gameplay", "Map", "ElementZones", "Water", "Water"}, golemName = "Water Golem", activeGolems = {}, targetKey = "waterGolems" },
+    { zoneParts = {"Gameplay", "Map", "ElementZones", "Earth", "Model", "Earth"}, golemName = "Earth Golem", activeGolems = {}, targetKey = "earthGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "AdvancedEarthArea", "Important", "Earth"}, golemName = "Earth Golem", activeGolems = {}, targetKey = "earthGolems" },
     { zoneParts = {"Gameplay", "RegionsLoaded", "MasterEarthArea", "Important", "Earth"}, golemName = "Earth Golem", activeGolems = {}, targetKey = "earthGolems" },
     { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterEarthArea", "Important", "Earth"}, golemName = "Earth Golem", activeGolems = {}, targetKey = "earthGolems" },
-    { zoneParts = {"Gameplay", "Map", "ElementZones", "Earth", "Model", "Earth"}, golemName = "Earth Golem", activeGolems = {}, targetKey = "earthGolems" },
     { zoneParts = {"Gameplay", "RegionsLoaded", "AdvancedPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {}, targetKey = "plasmaGolems" },
     { zoneParts = {"Gameplay", "RegionsLoaded", "MasterPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {}, targetKey = "plasmaGolems" },
     { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {}, targetKey = "plasmaGolems" },
@@ -258,20 +265,21 @@ local settingsTab = win:Tab("Settings", "settings")
 
 local fireSection = hitboxTab:Section("Fire Element", "Left")
 fireSection:Toggle("Fire Boss", true, function(v) targets.fireBoss.enabled = v; autoSave() end)
-fireSection:Toggle("Master Fire Boss", true, function(v) targets.masterFireBoss.enabled = v; autoSave() end)
-fireSection:Toggle("Grandmaster Fire Boss", true, function(v) targets.grandmasterFireBoss.enabled = v; autoSave() end)
-fireSection:Toggle("Fire Golems (Normal)", true, function(v) targets.fireGolemsNormal.enabled = v; autoSave() end)
-fireSection:Toggle("Fire Golems (Master)", true, function(v) targets.fireGolemsMaster.enabled = v; autoSave() end)
-fireSection:Toggle("Fire Golems (Grandmaster)", true, function(v) targets.fireGolemsGrandmaster.enabled = v; autoSave() end)
+fireSection:Toggle("Advanced Fire Boss", true, function(v) targets.fireBossAdvanced.enabled = v; autoSave() end)
+fireSection:Toggle("Master Fire Boss", true, function(v) targets.fireBossMaster.enabled = v; autoSave() end)
+fireSection:Toggle("Grandmaster Fire Boss", true, function(v) targets.fireBossGrandmaster.enabled = v; autoSave() end)
+fireSection:Toggle("Fire Golems", true, function(v) targets.fireGolems.enabled = v; autoSave() end)
 
 local waterSection = hitboxTab:Section("Water Element", "Left")
 waterSection:Toggle("Water Boss", true, function(v) targets.waterBoss.enabled = v; autoSave() end)
+waterSection:Toggle("Advanced Water Boss", true, function(v) targets.waterBossAdvanced.enabled = v; autoSave() end)
 waterSection:Toggle("Master Water Boss", true, function(v) targets.waterBossMaster.enabled = v; autoSave() end)
 waterSection:Toggle("Grandmaster Water Boss", true, function(v) targets.waterBossGrandmaster.enabled = v; autoSave() end)
 waterSection:Toggle("Water Golems", true, function(v) targets.waterGolems.enabled = v; autoSave() end)
 
 local earthSection = hitboxTab:Section("Earth Element", "Right")
 earthSection:Toggle("Earth Boss", true, function(v) targets.earthBoss.enabled = v; autoSave() end)
+earthSection:Toggle("Advanced Earth Boss", true, function(v) targets.earthBossAdvanced.enabled = v; autoSave() end)
 earthSection:Toggle("Master Earth Boss", true, function(v) targets.earthBossMaster.enabled = v; autoSave() end)
 earthSection:Toggle("Grandmaster Earth Boss", true, function(v) targets.earthBossGrandmaster.enabled = v; autoSave() end)
 earthSection:Toggle("Earth Golems", true, function(v) targets.earthGolems.enabled = v; autoSave() end)
