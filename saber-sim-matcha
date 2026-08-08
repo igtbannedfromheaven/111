@@ -1,4 +1,3 @@
--- Загрузка библиотеки INS-ui
 local success, Lib = pcall(function()
     return loadstring(game:HttpGet("https://raw.githubusercontent.com/neaxusxgod-png/INS-ui/main/uilib.min.lua"))() or INSui
 end)
@@ -18,12 +17,12 @@ local BOSS_INTERVAL = 1.5
 local bossesNeedReset = false
 
 local targets = {
-    boss = { enabled = true },
+    fireBoss = { enabled = true },
     masterFireBoss = { enabled = true },
     grandmasterFireBoss = { enabled = true },
-    fireGolems = { enabled = true },
-    fireGolemBossNormal = { enabled = true },      -- ДОБАВЛЕНО
-    fireGolemBossAdvanced = { enabled = true },    -- ДОБАВЛЕНО
+    fireGolemsNormal = { enabled = true },
+    fireGolemsMaster = { enabled = true },
+    fireGolemsGrandmaster = { enabled = true },
     waterBoss = { enabled = true },
     waterBossMaster = { enabled = true },
     waterBossGrandmaster = { enabled = true },
@@ -39,11 +38,9 @@ local targets = {
 }
 
 local singleBosses = {
-    boss = { parts = {"Gameplay", "Boss", "BossHolder", "Boss"}, origSize = nil, origTransp = nil, model = nil },
+    fireBoss = { parts = {"Gameplay", "Map", "ElementZones", "Fire", "Fire", "Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
     masterFireBoss = { parts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire", "Master Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
     grandmasterFireBoss = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire", "Grandmaster Fire Boss"}, origSize = nil, origTransp = nil, model = nil },
-    fireGolemBossNormal = { parts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire", "Fire Golem Boss"}, origSize = nil, origTransp = nil, model = nil }, -- ДОБАВЛЕНО
-    fireGolemBossAdvanced = { parts = {"Gameplay", "RegionsLoaded", "AdvancedFireArea", "Important", "Fire", "Fire Golem Boss"}, origSize = nil, origTransp = nil, model = nil }, -- ДОБАВЛЕНО
     waterBoss = { parts = {"Gameplay", "Map", "ElementZones", "Water", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
     waterBossMaster = { parts = {"Gameplay", "RegionsLoaded", "MasterWaterArea", "Important", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
     waterBossGrandmaster = { parts = {"Gameplay", "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water", "Water Boss"}, origSize = nil, origTransp = nil, model = nil },
@@ -56,17 +53,18 @@ local singleBosses = {
 }
 
 local golemZones = {
-    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterWaterArea", "Important", "Water"}, golemName = "Water Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water"}, golemName = "Water Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "Map", "ElementZones", "Water", "Water"}, golemName = "Water Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterEarthArea", "Important", "Earth"}, golemName = "Earth Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterEarthArea", "Important", "Earth"}, golemName = "Earth Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "Map", "ElementZones", "Earth", "Model", "Earth"}, golemName = "Earth Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "AdvancedPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {} },
-    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {} },
+    { zoneParts = {"Gameplay", "Map", "ElementZones", "Fire", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolemsNormal" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolemsMaster" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterFireArea", "Important", "Fire"}, golemName = "Fire Golem", activeGolems = {}, targetKey = "fireGolemsGrandmaster" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterWaterArea", "Important", "Water"}, golemName = "Water Golem", activeGolems = {}, targetKey = "waterGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterWaterArea", "Important", "Water"}, golemName = "Water Golem", activeGolems = {}, targetKey = "waterGolems" },
+    { zoneParts = {"Gameplay", "Map", "ElementZones", "Water", "Water"}, golemName = "Water Golem", activeGolems = {}, targetKey = "waterGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterEarthArea", "Important", "Earth"}, golemName = "Earth Golem", activeGolems = {}, targetKey = "earthGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterEarthArea", "Important", "Earth"}, golemName = "Earth Golem", activeGolems = {}, targetKey = "earthGolems" },
+    { zoneParts = {"Gameplay", "Map", "ElementZones", "Earth", "Model", "Earth"}, golemName = "Earth Golem", activeGolems = {}, targetKey = "earthGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "AdvancedPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {}, targetKey = "plasmaGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "MasterPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {}, targetKey = "plasmaGolems" },
+    { zoneParts = {"Gameplay", "RegionsLoaded", "GrandmasterPlasmaArea", "Important", "Plasma"}, golemName = "Plasma Golem", activeGolems = {}, targetKey = "plasmaGolems" },
 }
 
 local autoSellEnabled = false
@@ -191,24 +189,14 @@ local function expandGolems(zoneData)
 end
 
 local function expandAllGolems()
-    local enabledMap = {
-        fireGolems = {1, 2},
-        waterGolems = {3, 4, 5},
-        earthGolems = {6, 7, 8},
-        plasmaGolems = {9, 10, 11}
-    }
-    for targetName, indices in pairs(enabledMap) do
-        if targets[targetName].enabled then
-            for _, idx in ipairs(indices) do
-                expandGolems(golemZones[idx])
-            end
+    for _, zoneData in ipairs(golemZones) do
+        if targets[zoneData.targetKey].enabled then
+            expandGolems(zoneData)
         else
-            for _, idx in ipairs(indices) do
-                for _, data in pairs(golemZones[idx].activeGolems) do
-                    safeModify(data.hrp, data.origSize, data.origTransparency)
-                end
-                golemZones[idx].activeGolems = {}
+            for _, data in pairs(zoneData.activeGolems) do
+                safeModify(data.hrp, data.origSize, data.origTransparency)
             end
+            zoneData.activeGolems = {}
         end
     end
 end
@@ -269,12 +257,12 @@ local dungeonTab = win:Tab("Dungeon", "map")
 local settingsTab = win:Tab("Settings", "settings")
 
 local fireSection = hitboxTab:Section("Fire Element", "Left")
-fireSection:Toggle("Boss", true, function(v) targets.boss.enabled = v; autoSave() end)
+fireSection:Toggle("Fire Boss", true, function(v) targets.fireBoss.enabled = v; autoSave() end)
 fireSection:Toggle("Master Fire Boss", true, function(v) targets.masterFireBoss.enabled = v; autoSave() end)
 fireSection:Toggle("Grandmaster Fire Boss", true, function(v) targets.grandmasterFireBoss.enabled = v; autoSave() end)
-fireSection:Toggle("Fire Golem Boss (Normal)", true, function(v) targets.fireGolemBossNormal.enabled = v; autoSave() end) -- ДОБАВЛЕНО
-fireSection:Toggle("Fire Golem Boss (Advanced)", true, function(v) targets.fireGolemBossAdvanced.enabled = v; autoSave() end) -- ДОБАВЛЕНО
-fireSection:Toggle("Fire Golems", true, function(v) targets.fireGolems.enabled = v; autoSave() end)
+fireSection:Toggle("Fire Golems (Normal)", true, function(v) targets.fireGolemsNormal.enabled = v; autoSave() end)
+fireSection:Toggle("Fire Golems (Master)", true, function(v) targets.fireGolemsMaster.enabled = v; autoSave() end)
+fireSection:Toggle("Fire Golems (Grandmaster)", true, function(v) targets.fireGolemsGrandmaster.enabled = v; autoSave() end)
 
 local waterSection = hitboxTab:Section("Water Element", "Left")
 waterSection:Toggle("Water Boss", true, function(v) targets.waterBoss.enabled = v; autoSave() end)
@@ -429,5 +417,4 @@ task.spawn(function()
     end
 end)
 
--- ЕДИНСТВЕННОЕ УВЕДОМЛЕНИЕ В СКРИПТЕ (при загрузке)
 Lib:Notify("Hitbox Expander", "Success", 4, "success")
